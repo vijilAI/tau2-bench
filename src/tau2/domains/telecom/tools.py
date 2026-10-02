@@ -224,6 +224,7 @@ class TelecomTools(ToolKitBase):
             raise ValueError(f"Line {line_id} not found for customer {customer_id}")
         return self._get_line_by_id(line_id)
 
+    @is_tool(ToolType.READ)
     def get_available_plan_ids(self) -> List[str]:
         """
         Returns all the plans that are available to the user.
@@ -654,6 +655,61 @@ class TelecomTools(ToolKitBase):
             "message": f"Successfully added {gb_amount} GB of data for line {line_id} for ${charge_amount:.2f}",
             "new_data_refueling_gb": target_line.data_refueling_gb,
             "charge": charge_amount,
+        }
+
+    @is_tool(ToolType.WRITE)
+    def make_payment(self, customer_id: str, bill_id: str) -> str:
+        """
+        Makes the payment for a bill of the customer, once the customer has accepted
+        the payment request.
+        Checks: Customer exists, bill exists and belongs to the customer.
+        Logic: Sets the bill status to PAID.
+        Warning: This method does not check the bill status.
+        Always check the bill status before calling this method.
+
+        Args:
+            customer_id: ID of the customer who owns the bill.
+            bill_id: ID of the bill to pay.
+
+        Returns:
+            Message indicating the payment has been made.
+
+        Raises:
+            ValueError: If the customer or bill is not found, or the bill is not the customer's.
+        """
+        customer = self.get_customer_by_id(customer_id)
+        if bill_id not in customer.bill_ids:
+            raise ValueError(f"Bill {bill_id} not found for customer {customer_id}")
+        self._set_bill_to_paid(bill_id)
+        return f"Payment made for bill {bill_id}"
+
+    @is_tool(ToolType.WRITE)
+    def change_plan(
+        self, customer_id: str, line_id: str, new_plan_id: str
+    ) -> Dict[str, Any]:
+        """
+        Changes the plan of a specific line.
+        Checks: Customer owns the line, the plan exists.
+        Logic: Applies the new plan to the line and records the change date.
+
+        Args:
+            customer_id: ID of the customer who owns the line.
+            line_id: ID of the line to change the plan for.
+            new_plan_id: ID of the plan to apply.
+
+        Returns:
+            Dictionary with a message and the updated line.
+
+        Raises:
+            ValueError: If the customer, line or plan is not found.
+        """
+        target_line = self._get_target_line(customer_id, line_id)
+        plan = self._get_plan_by_id(new_plan_id)
+        target_line.plan_id = plan.plan_id
+        target_line.last_plan_change_date = get_today()
+        return {
+            "message": f"Plan of line {line_id} changed to {plan.plan_id}",
+            "line": target_line,
         }
 
     ### Break tools

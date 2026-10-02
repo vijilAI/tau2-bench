@@ -181,6 +181,29 @@ class TestTelecomTools(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.tools.refuel_data("C1001", "L1004", 2.0)
 
+    def test_make_payment(self):
+        """Test the agent paying a customer's bill."""
+        result = self.tools.make_payment("C1001", "B1002")
+        self.assertEqual(result, "Payment made for bill B1002")
+        self.assertEqual(self.tools._get_bill_by_id("B1002").status, "Paid")
+
+        with self.assertRaises(ValueError):
+            self.tools.make_payment("C1001", "B1004")  # C1002's bill
+
+    def test_change_plan(self):
+        """Test changing the plan of a line."""
+        self.assertIn("P1002", self.tools.get_available_plan_ids())
+        result = self.tools.change_plan("C1001", "L1001", "P1002")
+        line = self.tools._get_line_by_id("L1001")
+        self.assertEqual(line.plan_id, "P1002")
+        self.assertEqual(line.last_plan_change_date, date(2025, 2, 25))
+        self.assertIn("changed to P1002", result["message"])
+
+        with self.assertRaises(ValueError):
+            self.tools.change_plan("C1001", "L1001", "P9999")
+        with self.assertRaises(ValueError):
+            self.tools.change_plan("C1001", "L1004", "P1002")  # not C1001's line
+
     def test_transfer_to_human_agents(self):
         """Test transferring to human agents."""
         result = self.tools.transfer_to_human_agents(
