@@ -658,32 +658,6 @@ class TelecomTools(ToolKitBase):
         }
 
     @is_tool(ToolType.WRITE)
-    def make_payment(self, customer_id: str, bill_id: str) -> str:
-        """
-        Makes the payment for a bill of the customer, once the customer has accepted
-        the payment request.
-        Checks: Customer exists, bill exists and belongs to the customer.
-        Logic: Sets the bill status to PAID.
-        Warning: This method does not check the bill status.
-        Always check the bill status before calling this method.
-
-        Args:
-            customer_id: ID of the customer who owns the bill.
-            bill_id: ID of the bill to pay.
-
-        Returns:
-            Message indicating the payment has been made.
-
-        Raises:
-            ValueError: If the customer or bill is not found, or the bill is not the customer's.
-        """
-        customer = self.get_customer_by_id(customer_id)
-        if bill_id not in customer.bill_ids:
-            raise ValueError(f"Bill {bill_id} not found for customer {customer_id}")
-        self._set_bill_to_paid(bill_id)
-        return f"Payment made for bill {bill_id}"
-
-    @is_tool(ToolType.WRITE)
     def change_plan(
         self, customer_id: str, line_id: str, new_plan_id: str
     ) -> Dict[str, Any]:

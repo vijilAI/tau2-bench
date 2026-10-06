@@ -181,14 +181,16 @@ class TestTelecomTools(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.tools.refuel_data("C1001", "L1004", 2.0)
 
-    def test_make_payment(self):
-        """Test the agent paying a customer's bill."""
-        result = self.tools.make_payment("C1001", "B1002")
-        self.assertEqual(result, "Payment made for bill B1002")
-        self.assertEqual(self.tools._get_bill_by_id("B1002").status, "Paid")
+    def test_make_payment_is_user_side(self):
+        """Paying a bill is the user's phone action: the agent has no make_payment tool."""
+        self.assertFalse(self.tools.has_tool("make_payment"))
 
-        with self.assertRaises(ValueError):
-            self.tools.make_payment("C1001", "B1004")  # C1002's bill
+    def test_solo_mode_tools_do_not_overlap(self):
+        """Solo mode merges agent and user tools, so their names must stay disjoint."""
+        from tau2.domains.telecom.environment import get_environment
+
+        env = get_environment(db=self.db, solo_mode=True)
+        self.assertTrue(env.solo_mode)
 
     def test_change_plan(self):
         """Test changing the plan of a line."""
