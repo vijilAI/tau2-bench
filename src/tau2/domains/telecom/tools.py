@@ -658,6 +658,34 @@ class TelecomTools(ToolKitBase):
         }
 
     @is_tool(ToolType.WRITE)
+    def agent_make_payment(self, customer_id: str, bill_id: str) -> str:
+        """
+        Makes the payment for the bill of a payment request the customer has accepted.
+        Checks: Customer exists, bill belongs to the customer and is AWAITING_PAYMENT
+        (a payment request was sent with send_payment_request).
+        Logic: Sets the bill status to PAID and clears the payment request on the
+        customer's phone.
+
+        Args:
+            customer_id: ID of the customer who owns the bill.
+            bill_id: ID of the bill to pay.
+
+        Returns:
+            Message indicating the payment has been made.
+
+        Raises:
+            ValueError: If the customer or bill is not found, or no payment request is pending for the bill.
+        """
+        customer = self.get_customer_by_id(customer_id)
+        if bill_id not in customer.bill_ids:
+            raise ValueError(f"Bill {bill_id} not found for customer {customer_id}")
+        bill = self._get_bill_by_id(bill_id)
+        if bill.status != BillStatus.AWAITING_PAYMENT:
+            raise ValueError(f"No payment request is pending for bill {bill_id}")
+        self._set_bill_to_paid(bill_id)
+        return f"Payment of {bill.total_due} USD has been made for bill {bill_id}."
+
+    @is_tool(ToolType.WRITE)
     def change_plan(
         self, customer_id: str, line_id: str, new_plan_id: str
     ) -> Dict[str, Any]:

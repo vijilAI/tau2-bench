@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 from tau2.data_model.tasks import Task
-from tau2.domains.telecom.data_model import LineStatus, TelecomDB
+from tau2.domains.telecom.data_model import BillStatus, LineStatus, TelecomDB
 from tau2.domains.telecom.tools import TelecomTools
 from tau2.domains.telecom.user_data_model import PaymentRequest, TelecomUserDB
 from tau2.domains.telecom.user_tools import TelecomUserTools
@@ -72,10 +72,11 @@ class TelecomEnvironment(Environment):
         else:
             self.user_tools.db.surroundings.mobile_data_usage_exceeded = False
 
-        # Check if the user has paid a bill
+        # Check if the bill was paid, by the user or by the agent (agent_make_payment)
         current_payment_request = self.user_tools.db.surroundings.payment_request
         if current_payment_request is not None:
-            if current_payment_request.paid:
+            bill = self.tools._get_bill_by_id(current_payment_request.bill_id)
+            if current_payment_request.paid or bill.status == BillStatus.PAID:
                 self.tools._set_bill_to_paid(current_payment_request.bill_id)
                 self.user_tools.db.surroundings.payment_request = None
 

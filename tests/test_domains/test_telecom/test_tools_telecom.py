@@ -185,6 +185,39 @@ class TestTelecomTools(unittest.TestCase):
         """Paying a bill is the user's phone action: the agent has no make_payment tool."""
         self.assertFalse(self.tools.has_tool("make_payment"))
 
+    def test_agent_make_payment(self):
+        """The agent pays an accepted request like the user's make_payment does."""
+        from tau2.domains.telecom.environment import get_environment
+
+        env = get_environment(db=self.db)
+        env.user_tools.db.surroundings.phone_number = "555-123-2001"  # C1001
+        tools = env.tools
+
+        with self.assertRaises(ValueError):  # no payment request yet
+            tools.agent_make_payment("C1001", "B1002")
+        with self.assertRaises(ValueError):  # C1002's bill
+            tools.agent_make_payment("C1001", "B1004")
+
+        tools.send_payment_request("C1001", "B1002")
+        env.sync_tools()
+        self.assertEqual(env.user_tools.db.surroundings.payment_request.bill_id, "B1002")
+
+        result = tools.agent_make_payment("C1001", "B1002")
+        self.assertIn("has been made for bill B1002", result)
+        self.assertEqual(tools._get_bill_by_id("B1002").status, "Paid")
+        with self.assertRaises(ValueError):  # already paid
+            tools.agent_make_payment("C1001", "B1002")
+
+        # The phone's request is cleared, so the user cannot pay it again
+        env.sync_tools()
+        self.assertIsNone(env.user_tools.db.surroundings.payment_request)
+        self.assertEqual(env.user_tools.make_payment(), "You do not have a payment request.")
+
+        # and the next request reaches the phone
+        tools.send_payment_request("C1001", "B1003")
+        env.sync_tools()
+        self.assertEqual(env.user_tools.db.surroundings.payment_request.bill_id, "B1003")
+
     def test_solo_mode_tools_do_not_overlap(self):
         """Solo mode merges agent and user tools, so their names must stay disjoint."""
         from tau2.domains.telecom.environment import get_environment
