@@ -108,7 +108,7 @@ To do so you need to follow these steps:
     - This will change the status of the bill to AWAITING PAYMENT.
 - Inform the user that a payment request has been sent. They should:
     - Check their payment requests using the check_payment_request tool.
-- If the user accepts the payment request, use the agent_make_payment tool to make the payment.
+- If the user accepts the payment request, use the make_payment tool to make the payment.
 - After the payment is made, the bill status will be updated to PAID.
 - Always check that the bill status is updated to PAID before informing the user that the bill has been paid.
 

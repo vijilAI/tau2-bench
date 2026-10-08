@@ -181,15 +181,48 @@ class TestTelecomTools(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.tools.refuel_data("C1001", "L1004", 2.0)
 
-    def test_make_payment_is_user_side(self):
-        """Paying a bill is the user's phone action: the agent has no make_payment tool."""
-        self.assertFalse(self.tools.has_tool("make_payment"))
+    def test_payment_tool_make_payment_is_the_default(self):
+        """By default the user pays from the phone (upstream tau2): the agent has no
+        agent_make_payment and the policy names make_payment."""
+        from tau2.domains.telecom.environment import get_environment
+
+        env = get_environment(db=self.db)
+        agent = {t.name for t in env.get_tools()}
+        user = {t.name for t in env.get_user_tools()}
+        self.assertNotIn("agent_make_payment", agent)
+        self.assertNotIn("make_payment", agent)
+        self.assertIn("make_payment", user)
+        self.assertIn("use the make_payment tool", env.get_policy())
+        self.assertNotIn("agent_make_payment", env.get_policy())
+        with self.assertRaises(ValueError):
+            env.use_tool("agent_make_payment", customer_id="C1001", bill_id="B1002")
+
+    def test_payment_tool_agent_make_payment(self):
+        """The agent pays: the phone has no make_payment and the policy names
+        agent_make_payment, in solo mode too."""
+        from tau2.domains.telecom.environment import get_environment
+
+        env = get_environment(db=self.db, payment_tool="agent_make_payment")
+        agent = {t.name for t in env.get_tools()}
+        user = {t.name for t in env.get_user_tools()}
+        self.assertIn("agent_make_payment", agent)
+        self.assertNotIn("make_payment", user)
+        self.assertIn("check_payment_request", user)
+        self.assertIn("use the agent_make_payment tool", env.get_policy())
+        self.assertNotIn(" make_payment", env.get_policy())
+        with self.assertRaises(ValueError):
+            env.use_user_tool("make_payment")
+        solo = get_environment(solo_mode=True, payment_tool="agent_make_payment")
+        self.assertIn("agent_make_payment tool", solo.get_policy())
+        self.assertNotIn(" make_payment", solo.get_policy())
+        with self.assertRaises(ValueError):
+            get_environment(payment_tool="pay")
 
     def test_agent_make_payment(self):
         """The agent pays an accepted request like the user's make_payment does."""
         from tau2.domains.telecom.environment import get_environment
 
-        env = get_environment(db=self.db)
+        env = get_environment(db=self.db, payment_tool="agent_make_payment")
         env.user_tools.db.surroundings.phone_number = "555-123-2001"  # C1001
         tools = env.tools
 
@@ -211,7 +244,7 @@ class TestTelecomTools(unittest.TestCase):
         # The phone's request is cleared, so the user cannot pay it again
         env.sync_tools()
         self.assertIsNone(env.user_tools.db.surroundings.payment_request)
-        self.assertEqual(env.user_tools.make_payment(), "You do not have a payment request.")
+        self.assertEqual(env.user_tools.check_payment_request(), "No payment request has been made.")
 
         # and the next request reaches the phone
         tools.send_payment_request("C1001", "B1003")

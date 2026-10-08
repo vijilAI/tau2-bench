@@ -127,13 +127,21 @@ def is_discoverable_tool(
 class ToolKitBase(metaclass=ToolKitType):
     """Base class for ToolKit classes."""
 
+    #: Tools this instance does not offer: absent from its schemas and refused if called
+    #: (set per environment, e.g. telecom's ``payment_tool``).
+    hidden_tools: frozenset[str] = frozenset()
+
     def __init__(self, db: Optional[T] = None):
         self.db: Optional[T] = db
 
     @property
     def tools(self) -> Dict[str, Callable]:
         """Get the tools available in the ToolKit."""
-        return {name: getattr(self, name) for name in self._func_tools.keys()}
+        return {
+            name: getattr(self, name)
+            for name in self._func_tools.keys()
+            if name not in self.hidden_tools
+        }
 
     def use_tool(self, tool_name: str, **kwargs) -> str:
         """Use a tool."""

@@ -23,6 +23,20 @@ from tau2.environment.environment import Environment
 from tau2.utils import load_file
 
 
+#: The two ways a bill can be paid (get_environment's payment_tool).
+PAYMENT_TOOLS = ("make_payment", "agent_make_payment")
+
+
+def payment_policy(policy: str, payment_tool: str) -> str:
+    """A telecom policy text (main or solo) as it reads under payment_tool: with
+    agent_make_payment, the payment step names the agent's tool."""
+    if payment_tool not in PAYMENT_TOOLS:
+        raise ValueError(f"Invalid payment tool: {payment_tool}")
+    if payment_tool == "make_payment":
+        return policy
+    return policy.replace("the make_payment tool", "the agent_make_payment tool")
+
+
 class TelecomEnvironment(Environment):
     tools: TelecomTools
     user_tools: TelecomUserTools
@@ -99,13 +113,21 @@ def get_environment(
     user_db: Optional[TelecomUserDB] = None,
     solo_mode: bool = False,
     policy_type: str = "manual",  # "manual" or "workflow"
+    payment_tool: str = "make_payment",  # "make_payment" or "agent_make_payment"
 ) -> TelecomEnvironment:
+    """payment_tool picks who pays a bill: "make_payment" (upstream tau2) is the user's
+    phone tool and the agent has no agent_make_payment; "agent_make_payment" is the
+    agent's tool, the phone has no make_payment and the policy names agent_make_payment."""
     if db is None:
         db = TelecomDB.load(TELECOM_DB_PATH)
     tools = TelecomTools(db)
     if user_db is None:
         user_db = TelecomUserDB.load(TELECOM_USER_DB_PATH)
     user_tools = TelecomUserTools(user_db)
+    if payment_tool == "make_payment":
+        tools.hidden_tools = frozenset({"agent_make_payment"})
+    else:
+        user_tools.hidden_tools = frozenset({"make_payment"})
     if not solo_mode:
         policy_path = TELECOM_MAIN_POLICY_PATH
         if policy_type == "manual":
@@ -122,7 +144,7 @@ def get_environment(
             tech_support_policy_path = TELECOM_TECH_SUPPORT_POLICY_WORKFLOW_SOLO_PATH
         else:
             raise ValueError(f"Invalid policy type: {policy_type}")
-    main_policy = load_file(policy_path)
+    main_policy = payment_policy(load_file(policy_path), payment_tool)
     tech_support_policy = load_file(tech_support_policy_path)
     policy = (
         "<main_policy>\n"
