@@ -2540,6 +2540,9 @@
         "[service_issue]break_apn_settings|lock_sim_card_pin[PERSONA:None]",
         "[service_issue]break_apn_settings|lock_sim_card_pin|overdue_bill_suspension[PERSONA:Easy]",
         "[service_issue]contract_end_suspension|unseat_sim_card[PERSONA:Hard]",
-        "[service_issue]overdue_bill_suspension|unseat_sim_card[PERSONA:Easy]"
+        "[service_issue]overdue_bill_suspension|unseat_sim_card[PERSONA:Easy]",
+        "[mms_issue]bad_network_preference|user_abroad_roaming_disabled_on[PERSONA:None][LINES:1]",
+        "[mobile_data_issue]airplane_mode_on|data_saver_mode_on|user_abroad_roaming_disabled_on[PERSONA:None][LINES:1]",
+        "[mms_issue]bad_network_preference|user_abroad_roaming_disabled_off[PERSONA:None][LINES:1]"
     ]
 }

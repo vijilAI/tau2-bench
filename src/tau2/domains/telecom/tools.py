@@ -778,6 +778,29 @@ class TelecomTools(ToolKitBase):
             line.contract_end_date = last_day_of_last_month
         return f"Line {line_id} suspended for unpaid bill {new_bill_id}. Contract ended: {contract_ended}"
 
+    def keep_single_line(self, customer_id: str, line_id: str) -> str:
+        """
+        Leaves the customer with only ``line_id``: their other lines are removed from the
+        account and the lines table, and their bills lose those lines' line items (totals
+        recomputed). The removed lines' devices stay in the devices table, unreferenced.
+        """
+        customer = self.get_customer_by_id(customer_id)
+        if line_id not in customer.line_ids:
+            raise ValueError(f"Line {line_id} does not belong to customer {customer_id}")
+        others = [lid for lid in customer.line_ids if lid != line_id]
+        phones = {self._get_line_by_id(lid).phone_number for lid in others}
+        customer.line_ids = [line_id]
+        self.db.lines = [line for line in self.db.lines if line.line_id not in others]
+        for bill_id in customer.bill_ids:
+            bill = self._get_bill_by_id(bill_id)
+            bill.line_items = [
+                item
+                for item in bill.line_items
+                if not any(item.description.endswith(f"Line {phone}") for phone in phones)
+            ]
+            bill.total_due = round(sum(item.amount for item in bill.line_items), 2)
+        return f"Customer {customer_id} now has only line {line_id} (removed: {', '.join(others)})"
+
     ### Assertions
     def assert_data_refueling_amount(
         self, customer_id: str, line_id: str, expected_amount: float
